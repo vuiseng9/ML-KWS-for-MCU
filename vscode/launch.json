@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Train 3-layer NN (128 neurons per layer)",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ML-KWS-for-MCU",
+            "program": "train.py",
+            "args": [
+                "--model_architecture", "dnn",
+                "--model_size_info", "128", "128", "128",
+                "--train_dir", "/tmp/speech_commands_train"
+            ]
+        },
+        {
+            "name": "Infer trained 3-layer NN (128 neurons per layer)",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ML-KWS-for-MCU",
+            "program": "test.py",
+            "args": [
+                "--model_architecture", "dnn",
+                "--model_size_info", "128", "128", "128",
+                "--checkpoint", "/tmp/speech_commands_train/best/dnn_8053.ckpt-6400"
+            ]
+        },
+        {
+            "name": "Freeze trained 3-layer NN (128 neurons per layer)",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ML-KWS-for-MCU",
+            "program": "freeze.py",
+            "args": [
+                "--model_architecture", "dnn",
+                "--model_size_info", "128", "128", "128",
+                "--checkpoint", "/tmp/speech_commands_train/best/dnn_8053.ckpt-6400",
+                "--output_file", "/tmp/dnn.pb"
+            ]
+        },
+    ]
+}
