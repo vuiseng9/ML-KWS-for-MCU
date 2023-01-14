@@ -434,7 +434,7 @@ class AudioProcessor(object):
     pick_deterministically = (mode != 'training')
     # Use the processing graph we created earlier to repeatedly to generate the
     # final output sample data we'll use in training.
-    for i in xrange(offset, offset + sample_count):
+    for i in range(offset, offset + sample_count):
       # Pick which audio sample to use.
       if how_many == -1 or pick_deterministically:
         sample_index = i
@@ -498,7 +498,7 @@ class AudioProcessor(object):
     pick_deterministically = (mode != 'training')
     wav_files = []
     labels = np.zeros((sample_count, model_settings['label_count']))
-    for i in xrange(offset, offset + sample_count):
+    for i in range(offset, offset + sample_count):
       # Pick which audio sample to use.
       if how_many == -1 or pick_deterministically:
         sample_index = i

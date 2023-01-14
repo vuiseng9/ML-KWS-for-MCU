@@ -212,7 +212,7 @@ def main(_):
   # Training loop.
   best_accuracy = 0
   training_steps_max = np.sum(training_steps_list)
-  for training_step in xrange(start_step, training_steps_max + 1):
+  for training_step in range(start_step, training_steps_max + 1):
     # Figure out what the current learning rate is.
     training_steps_sum = 0
     for i in range(len(training_steps_list)):
@@ -245,7 +245,7 @@ def main(_):
       set_size = audio_processor.set_size('validation')
       total_accuracy = 0
       total_conf_matrix = None
-      for i in xrange(0, set_size, FLAGS.batch_size):
+      for i in range(0, set_size, FLAGS.batch_size):
         validation_fingerprints, validation_ground_truth = (
             audio_processor.get_data(FLAGS.batch_size, i, model_settings, 0.0,
                                      0.0, 0, 'validation', sess))
@@ -283,7 +283,7 @@ def main(_):
   tf.logging.info('set_size=%d', set_size)
   total_accuracy = 0
   total_conf_matrix = None
-  for i in xrange(0, set_size, FLAGS.batch_size):
+  for i in range(0, set_size, FLAGS.batch_size):
     test_fingerprints, test_ground_truth = audio_processor.get_data(
         FLAGS.batch_size, i, model_settings, 0.0, 0.0, 0, 'testing', sess)
     test_accuracy, conf_matrix = sess.run(
