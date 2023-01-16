@@ -13,7 +13,7 @@
             "justMyCode": true
         },
         {
-            "name": "Train 3-layer NN (128 neurons per layer)",
+            "name": "[Step 1] Train 3-layer NN",
             "type": "python",
             "request": "launch",
             "console": "integratedTerminal",
@@ -22,12 +22,15 @@
             "program": "train.py",
             "args": [
                 "--model_architecture", "dnn",
-                "--model_size_info", "128", "128", "128",
-                "--train_dir", "/tmp/speech_commands_train"
+                "--model_size_info", "144", "144", "144",
+                "--dct_coefficient_count", "10",
+                "--window_size_ms", "40",
+                "--window_stride_ms", "40",
+                "--train_dir", "/data5/vchua/run/kws-ns/train-dnn-144x3"
             ]
         },
         {
-            "name": "Infer trained 3-layer NN (128 neurons per layer)",
+            "name": "[Step 2] Infer trained 3-layer NN",
             "type": "python",
             "request": "launch",
             "console": "integratedTerminal",
@@ -36,12 +39,15 @@
             "program": "test.py",
             "args": [
                 "--model_architecture", "dnn",
-                "--model_size_info", "128", "128", "128",
-                "--checkpoint", "/tmp/speech_commands_train/best/dnn_8053.ckpt-6400"
+                "--model_size_info", "144", "144", "144",
+                "--dct_coefficient_count", "10",
+                "--window_size_ms", "40",
+                "--window_stride_ms", "40",
+                "--checkpoint", "/data5/vchua/run/kws-ns/train-dnn-144x3/best/dnn_8544.ckpt-17600"
             ]
         },
         {
-            "name": "Freeze trained 3-layer NN (128 neurons per layer)",
+            "name": "Freeze trained 3-layer NN",
             "type": "python",
             "request": "launch",
             "console": "integratedTerminal",
@@ -50,10 +56,67 @@
             "program": "freeze.py",
             "args": [
                 "--model_architecture", "dnn",
-                "--model_size_info", "128", "128", "128",
-                "--checkpoint", "/tmp/speech_commands_train/best/dnn_8053.ckpt-6400",
-                "--output_file", "/tmp/dnn.pb"
+                "--model_size_info", "144", "144", "144",
+                "--dct_coefficient_count", "10",
+                "--window_size_ms", "40",
+                "--window_stride_ms", "40",
+                "--checkpoint", "/data5/vchua/run/kws-ns/train-dnn-144x3/best/dnn_8544.ckpt-17600",
+                "--output_file", "/data5/vchua/run/kws-ns/train-dnn-144x3/dnn_8544.ckpt-17600.pb"
             ]
+        },
+        {
+            "name": "[Step 3] quant_test.py (weight quantization)", 
+            // it is a weight quantization only when act_max is all zeros
+            // this script also will print out suggest of q format, bias and output shift mapping for
+            // cmsis-nn functions (currently only for arm_fully_connected_q7)
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ML-KWS-for-MCU",
+            "program": "quant_test.py",
+            "args": [
+                "--model_architecture", "dnn",
+                "--model_size_info", "144", "144", "144",
+                "--dct_coefficient_count", "10",
+                "--window_size_ms", "40",
+                "--window_stride_ms", "40",
+                "--checkpoint", "/data5/vchua/run/kws-ns/train-dnn-144x3/best/dnn_8544.ckpt-17600",
+                "--act_max", "0", "0", "0", "0", "0",
+                "--track_minmax",
+                "--track_minmax_dir", "/data5/vchua/run/kws-ns/train-dnn-144x3/act_stats" // we can use tensorbord to view the event files
+            ]
+        },
+        {
+            "name": "[Step 4] Simulated quantization (weight and quantization)", 
+            // This is only meant for simulating the accuracy given the choice of activation clipping
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ML-KWS-for-MCU",
+            "program": "quant_test.py",
+            "args": [
+                "--model_architecture", "dnn",
+                "--model_size_info", "144", "144", "144",
+                "--dct_coefficient_count", "10",
+                "--window_size_ms", "40",
+                "--window_stride_ms", "40",
+                "--checkpoint", "/data5/vchua/run/kws-ns/train-dnn-144x3/best/dnn_8544.ckpt-17600",
+                "--act_max", "32", "128", "128", "64", "64",
+            ]
+        },
+        {
+            "name": "Convert event file to csv",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/ML-KWS-for-MCU/",
+            "program": "generate_activation_stats.py",
+            "args": [
+                "--event_file", "./temp/events.out.tfevents.1673680437.csr-a100x6"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
         },
     ]
 }

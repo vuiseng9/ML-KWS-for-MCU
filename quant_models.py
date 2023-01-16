@@ -76,7 +76,7 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
 
 
 def create_model(fingerprint_input, model_settings, model_architecture,
-                 model_size_info, act_max, is_training, \
+                 model_size_info, act_max, is_training, track_minmax=False,
                  runtime_settings=None):
   """Builds a model of the requested architecture compatible with the settings.
 
@@ -112,7 +112,7 @@ def create_model(fingerprint_input, model_settings, model_architecture,
   """
   if model_architecture == 'dnn':
     return create_dnn_model(fingerprint_input, model_settings, model_size_info,
-                              act_max, is_training)
+                              act_max, is_training, track_minmax)
   elif model_architecture == 'ds_cnn':
     return create_ds_cnn_model(fingerprint_input, model_settings, 
                                  model_size_info, act_max, is_training)
@@ -134,9 +134,14 @@ def load_variables_from_checkpoint(sess, start_checkpoint):
   saver = tf.train.Saver(tf.global_variables())
   saver.restore(sess, start_checkpoint)
 
+# we will insert these ops to get min and max of intermediate features (input to FC or Conv layers)
+def wrap_min_max_ops(tf_tensor):
+  scalar_min = tf.math.reduce_min(tf_tensor)
+  scalar_max = tf.math.reduce_max(tf_tensor)
+  return scalar_min, scalar_max
 
 def create_dnn_model(fingerprint_input, model_settings, model_size_info, 
-                       act_max, is_training):
+                       act_max, is_training, track_minmax=False):
   """Builds a model with multiple hidden fully-connected layers.
   model_size_info: length of the array defines the number of hidden-layers and
                    each element in the array represent the number of neurons 
@@ -151,6 +156,14 @@ def create_dnn_model(fingerprint_input, model_settings, model_size_info,
   layer_dim = [fingerprint_size]
   layer_dim.extend(model_size_info)
   flow = fingerprint_input
+  if track_minmax:
+    summary_handle_list = []
+    input_min, input_max = wrap_min_max_ops(flow)
+    input_min_handle = tf.summary.scalar(f"input/{input_min.name}", input_min)
+    input_max_handle = tf.summary.scalar(f"input/{input_max.name}", input_max)
+    summary_handle_list.append(input_min_handle)
+    summary_handle_list.append(input_max_handle)
+
   if(act_max[0]!=0):
     flow = tf.fake_quant_with_min_max_vars(flow, min=-act_max[0], \
                max=act_max[0]-(act_max[0]/128.0), num_bits=8)
@@ -160,6 +173,12 @@ def create_dnn_model(fingerprint_input, model_settings, model_size_info,
                 initializer=tf.contrib.layers.xavier_initializer())
           b = tf.get_variable('b', shape=[layer_dim[i]])
           flow = tf.matmul(flow, W) + b
+          if track_minmax:
+            feature_min, feature_max = wrap_min_max_ops(flow)
+            feat_min_handle = tf.summary.scalar(f"{feature_min.name}", feature_min)
+            feat_max_handle = tf.summary.scalar(f"{feature_max.name}", feature_max)
+            summary_handle_list.append(feat_min_handle)
+            summary_handle_list.append(feat_max_handle)
           if(act_max[i]!=0):
             flow = tf.fake_quant_with_min_max_vars(flow, min=-act_max[i], \
                        max=act_max[i]-(act_max[i]/128.0), num_bits=8)
@@ -171,13 +190,26 @@ def create_dnn_model(fingerprint_input, model_settings, model_size_info,
               initializer=tf.contrib.layers.xavier_initializer())
   bias = tf.Variable(tf.zeros([label_count]))
   logits = tf.matmul(flow, weights) + bias
+  if track_minmax:
+    logits_min, logits_max = wrap_min_max_ops(logits)
+    logits_min_handle = tf.summary.scalar(f"logits/{logits_min.name}", logits_min)
+    logits_max_handle = tf.summary.scalar(f"logits/{logits_max.name}", logits_max)
+    summary_handle_list.append(logits_min_handle)
+    summary_handle_list.append(logits_max_handle)
   if(act_max[num_layers+1]!=0):
     logits = tf.fake_quant_with_min_max_vars(logits, min=-act_max[num_layers+1], \
                  max=act_max[num_layers+1]-(act_max[num_layers+1]/128.0), num_bits=8)
+  
   if is_training:
-    return logits, dropout_prob
+    if track_minmax:
+      return logits, dropout_prob, summary_handle_list
+    else:
+      return logits, dropout_prob
   else:
-    return logits
+    if track_minmax:
+      return logits, summary_handle_list
+    else:
+      return logits
 
 def create_ds_cnn_model(fingerprint_input, model_settings, model_size_info,
                           act_max, is_training):
